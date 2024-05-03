@@ -23,7 +23,7 @@ const client = useSupabaseClient()
 
 async function logout() {
   await client.auth.signOut()
-  navigateTo("/login")
+  navigateTo("/auth/login")
 }
 </script>
 
@@ -37,9 +37,6 @@ async function logout() {
           </TabsTrigger>
           <TabsTrigger value="active">
             Active
-          </TabsTrigger>
-          <TabsTrigger value="draft">
-            Draft
           </TabsTrigger>
           <TabsTrigger class="hidden sm:flex" value="archived">
             Archived

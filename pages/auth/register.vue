@@ -1,13 +1,12 @@
 <script lang="ts" setup>
-import {Button} from '@/components/ui/button'
-import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
-import {Input} from '@/components/ui/input'
+import {Button} from '~/components/ui/button'
+import {Card, CardContent, CardHeader, CardTitle} from '~/components/ui/card'
+import {Input} from '~/components/ui/input'
 import {toTypedSchema} from "@vee-validate/zod";
 import {z} from "zod";
 import {useForm} from "vee-validate";
 import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "~/components/ui/form";
 import {Loader2} from 'lucide-vue-next'
-import type {Provider} from "@supabase/auth-js";
 
 definePageMeta({
   layout: false
@@ -39,8 +38,8 @@ const onSubmit = handleSubmit(async (values) => {
     password: values.password,
     options: {
       data: {
-        firstName: values.firstName,
-        lastName: values.lastName,
+        name: values.firstName,
+        full_name: `${values.firstName} ${values.lastName}`,
       },
     }
   })
@@ -52,7 +51,7 @@ const onSubmit = handleSubmit(async (values) => {
   isLoading.value = false
 })
 
-const onSubmitWithProvider = async (provider: Provider) => {
+const onSubmitWithProvider = async (provider: any) => {
   isLoading.value = true
   await client.auth.signInWithOAuth({
     provider: provider,

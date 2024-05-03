@@ -6,7 +6,8 @@ export default defineNuxtConfig({
         "shadcn-nuxt",
         '@nuxtjs/color-mode',
         "@nuxtjs/supabase",
-        "@vee-validate/nuxt"
+        "@vee-validate/nuxt",
+        "@nuxt/image"
     ],
     shadcn: {
         /**
@@ -24,9 +25,9 @@ export default defineNuxtConfig({
     },
     supabase: {
         redirectOptions: {
-            login: '/login',
+            login: '/auth/login',
             callback: '/',
-            exclude: ['/register'],
+            exclude: ['/auth/register'],
         }
     }
 })

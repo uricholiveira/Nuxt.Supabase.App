@@ -37,7 +37,7 @@ onMounted(() => {
 
 const logout = async () => {
   await client.auth.signOut()
-  navigateTo("/login")
+  await navigateTo("/auth/login")
 }
 
 const getPath = (index: any) => {
@@ -92,7 +92,7 @@ const getPath = (index: any) => {
               <NuxtLink
                   :class="$route.path == '/products'? 'bg-accent text-accent-foreground' : 'text-muted-foreground'"
                   class="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:text-foreground md:h-8 md:w-8"
-                  to="/orders"
+                  to="/products"
               >
                 <Package class="h-5 w-5"/>
                 <span class="sr-only">Produtos</span>
@@ -107,7 +107,7 @@ const getPath = (index: any) => {
               <NuxtLink
                   :class="$route.path == '/users'? 'bg-accent text-accent-foreground' : 'text-muted-foreground'"
                   class="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:text-foreground md:h-8 md:w-8"
-                  to="/orders"
+                  to="/users"
               >
                 <Users2 class="h-5 w-5"/>
                 <span class="sr-only">Usuários</span>

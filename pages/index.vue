@@ -1,20 +1,19 @@
 <script lang="ts" setup>
 
 definePageMeta({
-  middleware: ['auth']
+  middleware: "auth"
 })
 
-const client = useSupabaseClient()
+const user = useSupabaseUser()
+const session = useSupabaseSession()
 
-async function logout() {
-  await client.auth.signOut()
-  navigateTo("/login")
-}
+console.log('user', user.value)
+
 </script>
 
 <template>
   <div>
-    <h1>aaa</h1>
+    <h1>Olá, {{ user?.email }}</h1>
   </div>
 </template>
 

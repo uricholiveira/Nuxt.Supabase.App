@@ -31,13 +31,14 @@ const {handleSubmit} = useForm({
 
 const onSubmit = handleSubmit(async (values) => {
   isLoading.value = true
-  const {data: user, error} = await client.auth.signInWithPassword({
+  const {data, error} = await client.auth.signInWithPassword({
     email: values.email,
     password: values.password,
   })
-  console.log(user)
-  console.log(error?.message)
-  if (error?.message === 'Invalid login credentials') {
+
+  console.log('auth', data.user)
+  console.log('session', data.session)
+  if (error?.message === 'Invalid auth credentials') {
     errorMessage.value = 'Usuário/senha incorretos'
   }
   isLoading.value = false
@@ -45,22 +46,17 @@ const onSubmit = handleSubmit(async (values) => {
 
 const onSubmitWithProvider = async (provider: any) => {
   isLoading.value = true
-  const {data: user, error} = await client.auth.signInWithOAuth({
-    provider: provider,
-    options: {
-      redirectTo: '/login'
-    }
+  await client.auth.signInWithOAuth({
+    provider: provider
   });
 
-  console.log(user)
-  console.log(error?.message)
   isLoading.value = false
 }
 
-watchEffect(() => {
+watchEffect(async () => {
   if (user?.value) {
-    console.log('user', user?.value)
-    // navigateTo("/")
+    console.log('watchEffect', user.value)
+    await router.push("/")
   }
 })
 
@@ -114,7 +110,7 @@ watchEffect(() => {
         </form>
         <div class="mt-4 text-center text-sm">
           Ainda não tem uma conta?
-          <NuxtLink class="underline" to="/register">
+          <NuxtLink class="underline" to="/auth/register">
             Crie uma
           </NuxtLink>
         </div>

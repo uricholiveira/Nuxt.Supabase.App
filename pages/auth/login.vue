@@ -36,8 +36,6 @@ const onSubmit = handleSubmit(async (values) => {
     password: values.password,
   })
 
-  console.log('auth', data.user)
-  console.log('session', data.session)
   if (error?.message === 'Invalid auth credentials') {
     errorMessage.value = 'Usuário/senha incorretos'
   }

@@ -13,36 +13,43 @@ import {Label} from "~/components/ui/label";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Button} from "~/components/ui/button";
 import {Avatar, AvatarFallback, AvatarImage} from "~/components/ui/avatar";
+import {useUsersStore} from "~/stores/users";
 
 const route = useRoute()
 const {id} = route.params
+const store = useUsersStore()
+await store.fetchUserById(id as string)
+const {user} = storeToRefs(store)
+
+watchEffect(async () => {
+  await store.fetchUserById(id as string)
+})
 
 const isLoading = ref(false)
 const isUpdating = ref(false)
 const errorMessage = ref('')
 const client = useSupabaseClient()
-const {data: user} = await client.auth.admin.getUserById(id as string)
 const registerSchema = toTypedSchema(z.object({
   firstName: z.string({required_error: "Obrigatório"})
       .min(3, "Precisa ter pelo menos 3 caracteres")
       .max(50, "Precisa ter no máximo 50 caracteres")
-      .default(user.user?.user_metadata.full_name.split(' ')[0]),
+      .default(user.value?.user_metadata.full_name.split(' ')[0]),
   lastName: z.string({required_error: "Obrigatório"})
       .min(3, "Precisa ter pelo menos 3 caracteres")
       .max(50, "Precisa ter no máximo 50 caracteres")
-      .default(user.user?.user_metadata.full_name.split(' ')[1]),
+      .default(user.value?.user_metadata.full_name.split(' ')[1]),
   email: z.string({required_error: "Obrigatório"})
       .email(FormConstants.EMAIL_FIELD)
-      .default(user.user?.email),
+      .default(user.value?.email as string),
   password: z.string({required_error: "Obrigatório"})
       .min(6, "Precisa ter pelo menos 6 caracteres")
       .max(18, "Precisa ter no máximo 12 caracteres"),
-  acceptTerms: z.boolean({required_error: "Obrigatório"}).default(user.user?.user_metadata?.acceptTerms),
-  status: z.string({required_error: "Obrigatório"}).default(user.user?.email_confirmed_at ? 'Ativo' : 'Inativo'),
+  status: z.string({required_error: "Obrigatório"}).default(user.value?.email_confirmed_at ? 'Ativo' : 'Inativo'),
   preferences: z.object({
+    acceptTerms: z.boolean({required_error: "Obrigatório"}).default(user.value?.user_metadata?.preferences?.accept_terms ?? false),
     email: z.object({
-      marketing: z.boolean().default(user.user?.user_metadata?.preferences?.email?.marketing),
-      telemetry: z.boolean().default(user.user?.user_metadata?.preferences?.email?.marketing)
+      marketing: z.boolean({required_error: "Obrigatório"}).default(user.value?.user_metadata?.preferences?.email?.marketing ?? false),
+      telemetry: z.boolean({required_error: "Obrigatório"}).default(user.value?.user_metadata?.preferences?.email?.telemetry ?? false)
     })
   })
 }))
@@ -60,8 +67,8 @@ const onSubmit = handleSubmit(async (values) => {
     user_metadata: {
       name: values.firstName,
       full_name: `${values.firstName} ${values.lastName}`,
-      accept_terms: values.acceptTerms,
       preferences: {
+        accept_terms: values.preferences.acceptTerms,
         email: {
           marketing: values.preferences.email.marketing,
           telemetry: values.preferences.email.telemetry,
@@ -69,8 +76,6 @@ const onSubmit = handleSubmit(async (values) => {
       }
     },
   }).finally(() => isLoading.value = false)
-  console.log(data)
-  console.log(error)
 
   if (error) {
     errorMessage.value = error.message
@@ -80,16 +85,16 @@ const onSubmit = handleSubmit(async (values) => {
 })
 
 const handleUserDelete = async () => {
-  isLoading.value = true
-  const {data, error} = await client.auth.admin.deleteUser(id as string).finally(() => isLoading.value = false)
+  await store.deleteUserById(id as string).finally(() => navigateTo("/users"))
+}
 
-  await navigateTo('/users')
+const handleUserSoftDelete = async () => {
+  await store.deleteUserById(id as string, true).finally(() => navigateTo("/users"))
 }
 </script>
 
 <template>
   <div class="grid flex-1 auto-rows-max gap-4">
-
     <div class="flex items-center gap-4">
       <Button size="icon" variant="outline" @click="navigateTo('/users')">
         <ChevronLeft class="h-4 w-4"/>
@@ -191,7 +196,7 @@ const handleUserDelete = async () => {
               </FormField>
 
               <div class="grid grid-cols-1 space-x-2">
-                <FormField v-slot="{ value,errors,  handleChange }" name="acceptTerms" type="checkbox">
+                <FormField v-slot="{ value,errors,  handleChange }" name="preferences.acceptTerms" type="checkbox">
                   <FormItem class="flex flex-row items-start gap-x-3 space-y-0 rounded-md border p-4">
                     <FormControl>
                       <Checkbox :checked="value" :disabled="!isUpdating"
@@ -217,29 +222,37 @@ const handleUserDelete = async () => {
               Comunicações, permissões, etc
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div class="flex flex-wrap justify-start gap-4">
-              <div class="w-full flex items-center space-x-2">
-                <Checkbox id="terms"
-                          :disabled="!isUpdating"/>
-                <label
-                    class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    for="terms"
-                >
-                  Notificações de marketing por email
-                </label>
-              </div>
-              <div class="w-full flex items-center space-x-2">
-                <Checkbox id="terms"
-                          :disabled="!isUpdating"/>
-                <label
-                    class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    for="terms"
-                >
-                  Permite coleta de dados
-                </label>
-              </div>
-            </div>
+          <CardContent class="grid gap-4">
+            <FormField v-slot="{ value,errors,  handleChange }" name="preferences.email.marketing" type="checkbox">
+              <FormItem class="flex flex-row items-start gap-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox :checked="value" :disabled="!isUpdating"
+                            @update:checked="handleChange"/>
+                </FormControl>
+                <div class="space-y-1 leading-none">
+                  <FormLabel class="text-white">Aceita comunicações por e-mail?</FormLabel>
+                  <FormDescription>
+                    Ao aceitar com os termos e condições, o usuário está de acordo com ...
+                  </FormDescription>
+                  <FormMessage :class="errors.length > 0 ? 'text-destructive' : 'text-white'"/>
+                </div>
+              </FormItem>
+            </FormField>
+            <FormField v-slot="{ value,errors,  handleChange }" name="preferences.email.telemetry" type="checkbox">
+              <FormItem class="flex flex-row items-start gap-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox :checked="value" :disabled="!isUpdating"
+                            @update:checked="handleChange"/>
+                </FormControl>
+                <div class="space-y-1 leading-none">
+                  <FormLabel class="text-white">Aceita a coleta de dados?</FormLabel>
+                  <FormDescription>
+                    Ao aceitar com os termos e condições, o usuário está de acordo com ...
+                  </FormDescription>
+                  <FormMessage :class="errors.length > 0 ? 'text-destructive' : 'text-white'"/>
+                </div>
+              </FormItem>
+            </FormField>
           </CardContent>
         </Card>
         <Card>
@@ -320,7 +333,7 @@ const handleUserDelete = async () => {
           <CardContent>
             <div class="grid justify-center gap-2">
               <Avatar shape="square" size="lg">
-                <AvatarImage :src="user?.user?.user_metadata?.avatar_url" alt="@radix-vue"/>
+                <AvatarImage :src="user?.user_metadata?.avatar_url" alt="@radix-vue"/>
                 <AvatarFallback>??</AvatarFallback>
               </Avatar>
               <div class="flex justify-center items-center gap-2">
@@ -335,7 +348,7 @@ const handleUserDelete = async () => {
             </button>
           </CardFooter>
         </Card>
-        <Card v-if="$route.path != '/users/new'">
+        <Card v-if="$route.path != '/user/new'">
           <CardHeader>
             <CardTitle>Ações</CardTitle>
             <CardDescription>
@@ -347,9 +360,27 @@ const handleUserDelete = async () => {
               <Button size="sm" variant="outline">
                 Resetar senha
               </Button>
-              <Button size="sm" variant="secondary">
-                Arquivar
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger as-child>
+                  <Button size="sm" variant="secondary">
+                    Arquivar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Isso irá arquivar o usuário, com isso ele não poderá mais entrar
+                      no sistema.
+                      Essa ação pode ser desfeita ativando o usuário.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction @click="handleUserSoftDelete">Continuar</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Separator/>
               <AlertDialog>
                 <AlertDialogTrigger as-child>
@@ -361,8 +392,8 @@ const handleUserDelete = async () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Essa ação não pode ser desfeita. Isso excluirá permanentemente seu
-                      conta e remova seus dados de nossos servidores.
+                      Essa ação não pode ser desfeita. Isso excluirá permanentemente o usuário, incluindo todos os
+                      dados.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -371,7 +402,6 @@ const handleUserDelete = async () => {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-
             </div>
           </CardContent>
         </Card>

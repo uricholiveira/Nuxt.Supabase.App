@@ -7,8 +7,6 @@ definePageMeta({
 const user = useSupabaseUser()
 const session = useSupabaseSession()
 
-console.log('user', user.value)
-
 </script>
 
 <template>

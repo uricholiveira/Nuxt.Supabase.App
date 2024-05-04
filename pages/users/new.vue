@@ -29,9 +29,9 @@ const registerSchema = toTypedSchema(z.object({
   password: z.string({required_error: "Obrigatório"})
       .min(6, "Precisa ter pelo menos 6 caracteres")
       .max(18, "Precisa ter no máximo 12 caracteres"),
-  acceptTerms: z.boolean({required_error: "Obrigatório"}).default(false),
   status: z.string({required_error: "Obrigatório"}),
   preferences: z.object({
+    acceptTerms: z.boolean({required_error: "Obrigatório"}).default(false),
     email: z.object({
       marketing: z.boolean().default(true),
       telemetry: z.boolean().default(true)
@@ -52,8 +52,8 @@ const onSubmit = handleSubmit(async (values) => {
     user_metadata: {
       name: values.firstName,
       full_name: `${values.firstName} ${values.lastName}`,
-      accept_terms: values.acceptTerms,
       preferences: {
+        accept_terms: values.preferences.acceptTerms,
         email: {
           marketing: values.preferences.email.marketing,
           telemetry: values.preferences.email.telemetry,
@@ -61,8 +61,6 @@ const onSubmit = handleSubmit(async (values) => {
       }
     },
   }).finally(() => isLoading.value = false)
-  console.log(data)
-  console.log(error)
 
   if (error) {
     errorMessage.value = error.message
@@ -166,7 +164,7 @@ const onSubmit = handleSubmit(async (values) => {
               </FormField>
 
               <div class="grid grid-cols-1 space-x-2">
-                <FormField v-slot="{ value,errors,  handleChange }" name="acceptTerms" type="checkbox">
+                <FormField v-slot="{ value,errors,  handleChange }" name="preferences.acceptTerms" type="checkbox">
                   <FormItem class="flex flex-row items-start gap-x-3 space-y-0 rounded-md border p-4">
                     <FormControl>
                       <Checkbox :checked="value" @update:checked="handleChange"/>
@@ -191,27 +189,37 @@ const onSubmit = handleSubmit(async (values) => {
               Comunicações, permissões, etc
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div class="flex flex-wrap justify-start gap-4">
-              <div class="w-full flex items-center space-x-2">
-                <Checkbox id="terms"/>
-                <label
-                    class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    for="terms"
-                >
-                  Notificações de marketing por email
-                </label>
-              </div>
-              <div class="w-full flex items-center space-x-2">
-                <Checkbox id="terms"/>
-                <label
-                    class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    for="terms"
-                >
-                  Permite coleta de dados
-                </label>
-              </div>
-            </div>
+          <CardContent class="grid gap-4">
+            <FormField v-slot="{ value,errors,  handleChange }" name="preferences.email.marketing" type="checkbox">
+              <FormItem class="flex flex-row items-start gap-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox :checked="value"
+                            @update:checked="handleChange"/>
+                </FormControl>
+                <div class="space-y-1 leading-none">
+                  <FormLabel class="text-white">Aceita comunicações por e-mail?</FormLabel>
+                  <FormDescription>
+                    Ao aceitar com os termos e condições, o usuário está de acordo com ...
+                  </FormDescription>
+                  <FormMessage :class="errors.length > 0 ? 'text-destructive' : 'text-white'"/>
+                </div>
+              </FormItem>
+            </FormField>
+            <FormField v-slot="{ value,errors,  handleChange }" name="preferences.email.telemetry" type="checkbox">
+              <FormItem class="flex flex-row items-start gap-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox :checked="value"
+                            @update:checked="handleChange"/>
+                </FormControl>
+                <div class="space-y-1 leading-none">
+                  <FormLabel class="text-white">Aceita a coleta de dados?</FormLabel>
+                  <FormDescription>
+                    Ao aceitar com os termos e condições, o usuário está de acordo com ...
+                  </FormDescription>
+                  <FormMessage :class="errors.length > 0 ? 'text-destructive' : 'text-white'"/>
+                </div>
+              </FormItem>
+            </FormField>
           </CardContent>
         </Card>
         <Card>

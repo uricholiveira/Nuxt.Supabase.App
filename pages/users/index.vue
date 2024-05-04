@@ -1,7 +1,5 @@
 <script lang="ts" setup>
-import {Eye, File, ListFilter, MoreHorizontal, PlusCircle} from 'lucide-vue-next'
-
-import {Badge} from '@/components/ui/badge'
+import {Database, Eye, File, ListFilter, Loader2, MoreHorizontal, PlusCircle} from 'lucide-vue-next'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from '@/components/ui/card'
 import {
@@ -12,9 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from '@/components/ui/table'
+import {Table, TableBody, TableHead, TableHeader, TableRow,} from '@/components/ui/table'
 import {Tabs, TabsContent, TabsList, TabsTrigger,} from '@/components/ui/tabs'
-import {Skeleton} from "~/components/ui/skeleton";
 import {
   Pagination,
   PaginationEllipsis,
@@ -25,26 +22,24 @@ import {
   PaginationNext,
   PaginationPrev,
 } from '@/components/ui/pagination'
-import type {Pagination as SupabasePagination, User} from "@supabase/auth-js";
+import {useUsersStore} from "~/stores/users";
 
 definePageMeta({
   middleware: ['auth']
 })
 
-const client = useSupabaseClient()
 const page = ref(1)
 const perPage = ref(10)
+const store = useUsersStore()
+const {users, pagination, isLoading} = storeToRefs(store);
 
-const {data, error} = await useAsyncData("users",
-    async () => await client.auth.admin.listUsers({page: page.value, perPage: perPage.value}) as {
-      data: { users: User[]; aud: string; } & SupabasePagination;
-      error: null;
-    },
-    {
-      deep: true,
-      watch: [page, perPage]
-    }
-)
+watchEffect(async () => {
+  await store.fetchUsers(page.value, perPage.value)
+})
+
+const handleUserDelete = async (id: string) => {
+  await store.deleteUserById(id).finally(async () => await store.fetchUsers(page.value, perPage.value))
+}
 </script>
 
 <template>
@@ -140,7 +135,7 @@ const {data, error} = await useAsyncData("users",
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow v-for="user in data?.data?.users">
+                <TableRow v-for="user in users" v-if="users.length > 0">
                   <TableCell class="hidden sm:table-cell">
                     <NuxtImg
                         v-if="user.user_metadata?.avatar_url"
@@ -183,28 +178,61 @@ const {data, error} = await useAsyncData("users",
                       <Eye class="h-4 w-4"/>
                       <span class="sr-only">Toggle menu</span>
                     </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger as-child>
-                        <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                        >
-                          <MoreHorizontal class="h-4 w-4"/>
-                          <span class="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                        <DropdownMenuSeparator/>
-                        <DropdownMenuItem>Alterar senha</DropdownMenuItem>
-                        <DropdownMenuItem>Enviar email de recuperação</DropdownMenuItem>
-                        <DropdownMenuSeparator/>
-                        <DropdownMenuItem>Arquivar</DropdownMenuItem>
-                        <DropdownMenuSeparator/>
-                        <DropdownMenuItem>Excluir</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <AlertDialog>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                          <Button
+                              aria-haspopup="true"
+                              size="icon"
+                              variant="ghost"
+                          >
+                            <MoreHorizontal class="h-4 w-4"/>
+                            <span class="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                          <DropdownMenuSeparator/>
+                          <DropdownMenuItem>Alterar senha</DropdownMenuItem>
+                          <DropdownMenuItem>Enviar email de recuperação</DropdownMenuItem>
+                          <DropdownMenuSeparator/>
+                          <DropdownMenuItem>Arquivar</DropdownMenuItem>
+                          <DropdownMenuSeparator/>
+                          <AlertDialogTrigger as-child>
+                            <DropdownMenuItem>Excluir</DropdownMenuItem>
+                          </AlertDialogTrigger>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Essa ação não pode ser desfeita. Isso excluirá permanentemente seu
+                            conta e remova seus dados de nossos servidores.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction @click="handleUserDelete(user.id)">Continuar</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+                <TableRow v-else-if="isLoading" class="text-center">
+                  <TableCell :colspan="8">
+                    <div class="grid gap-4 justify-center items-center my-12">
+                      <Loader2 class="w-24 h-24 text-foreground animate-spin"/>
+                      <p class="animate-pulse">Carregando</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+                <TableRow v-else class="text-center">
+                  <TableCell :colspan="8">
+                    <div class="grid gap-4 justify-center items-center my-12 animate-pulse">
+                      <Database class="w-24 h-24 text-foreground"/>
+                      <p>Não há dados</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -212,7 +240,7 @@ const {data, error} = await useAsyncData("users",
           </CardContent>
           <CardFooter class="flex justify-end">
             <Pagination v-slot="{ page }" :items-per-page="perPage" :page="page"
-                        :sibling-count="1" :total="data?.data.total" show-edges
+                        :sibling-count="1" :total="pagination.total" show-edges
                         @update:page="value => page = value">
               <PaginationList v-slot="{ items }" class="flex items-center gap-1">
                 <PaginationFirst/>

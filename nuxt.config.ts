@@ -7,7 +7,8 @@ export default defineNuxtConfig({
         '@nuxtjs/color-mode',
         "@nuxtjs/supabase",
         "@vee-validate/nuxt",
-        "@nuxt/image"
+        "@nuxt/image",
+        '@pinia/nuxt'
     ],
     shadcn: {
         /**

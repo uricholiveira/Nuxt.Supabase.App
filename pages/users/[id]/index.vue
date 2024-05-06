@@ -7,16 +7,19 @@ import {Alert, AlertDescription} from "~/components/ui/alert";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select";
 import {FormControl, FormField, FormItem, FormLabel, FormMessage} from "~/components/ui/form";
 import {Input} from "~/components/ui/input";
-import {AlertCircle, ChevronLeft, Loader2, Upload} from "lucide-vue-next";
+import {AlertCircle, ChevronLeft, Loader2} from "lucide-vue-next";
 import {Separator} from "~/components/ui/separator";
 import {Label} from "~/components/ui/label";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Button} from "~/components/ui/button";
 import {Avatar, AvatarFallback, AvatarImage} from "~/components/ui/avatar";
 import {useUsersStore} from "~/stores/users";
+import {Toaster, useToast} from "~/components/ui/toast";
+import {UploadInput} from "~/components/ui/upload-input";
 
 const route = useRoute()
 const {id} = route.params
+const {toast} = useToast()
 const store = useUsersStore()
 await store.fetchUserById(id as string)
 const {user} = storeToRefs(store)
@@ -27,6 +30,7 @@ watchEffect(async () => {
 
 const isLoading = ref(false)
 const isUpdating = ref(false)
+const file = ref(null as File | null);
 const errorMessage = ref('')
 const client = useSupabaseClient()
 const registerSchema = toTypedSchema(z.object({
@@ -41,9 +45,6 @@ const registerSchema = toTypedSchema(z.object({
   email: z.string({required_error: "Obrigatório"})
       .email(FormConstants.EMAIL_FIELD)
       .default(user.value?.email as string),
-  password: z.string({required_error: "Obrigatório"})
-      .min(6, "Precisa ter pelo menos 6 caracteres")
-      .max(18, "Precisa ter no máximo 12 caracteres"),
   status: z.string({required_error: "Obrigatório"}).default(user.value?.email_confirmed_at ? 'Ativo' : 'Inativo'),
   preferences: z.object({
     acceptTerms: z.boolean({required_error: "Obrigatório"}).default(user.value?.user_metadata?.preferences?.accept_terms ?? false),
@@ -60,9 +61,8 @@ const {handleSubmit} = useForm({
 
 const onSubmit = handleSubmit(async (values) => {
   isLoading.value = true
-  const {data, error} = await client.auth.admin.createUser({
+  const {data, error} = await client.auth.admin.updateUserById(id as string, {
     email: values.email,
-    password: values.password,
     email_confirm: values.status === 'Ativo',
     user_metadata: {
       name: values.firstName,
@@ -80,7 +80,11 @@ const onSubmit = handleSubmit(async (values) => {
   if (error) {
     errorMessage.value = error.message
   } else {
-    await navigateTo("/users")
+    toast({
+      title: 'Usuário alterado com sucesso',
+      duration: 2000
+    })
+    isUpdating.value = false
   }
 })
 
@@ -91,10 +95,16 @@ const handleUserDelete = async () => {
 const handleUserSoftDelete = async () => {
   await store.deleteUserById(id as string, true).finally(() => navigateTo("/users"))
 }
+
+const handleUserAvatarFileChange = async (newFile: File | null) => {
+  file.value = newFile;
+  await store.uploadAvatarFile(id as string, file.value!)
+}
 </script>
 
 <template>
   <div class="grid flex-1 auto-rows-max gap-4">
+    <Toaster/>
     <div class="flex items-center gap-4">
       <Button size="icon" variant="outline" @click="navigateTo('/users')">
         <ChevronLeft class="h-4 w-4"/>
@@ -176,20 +186,6 @@ const handleUserSoftDelete = async () => {
                         type="email"
                         v-bind="componentField"
                     />
-                  </FormControl>
-                  <FormMessage :class="errors.length > 0 ? 'text-red-500' : 'text-white'"/>
-                </FormItem>
-              </FormField>
-              <FormField v-slot="{componentField, errors }" name="password">
-                <FormItem class="grid gap-2">
-                  <FormLabel class="text-white" for="password">Senha</FormLabel>
-                  <FormControl>
-                    <Input
-                        id="password"
-                        :class="errors.length > 0 ? 'ring-1 ring-red-500' : 'ring-0'"
-                        disabled
-                        type="password"
-                        v-bind="componentField"/>
                   </FormControl>
                   <FormMessage :class="errors.length > 0 ? 'text-red-500' : 'text-white'"/>
                 </FormItem>
@@ -333,7 +329,7 @@ const handleUserSoftDelete = async () => {
           <CardContent>
             <div class="grid justify-center gap-2">
               <Avatar shape="square" size="lg">
-                <AvatarImage :src="user?.user_metadata?.avatar_url" alt="@radix-vue"/>
+                <AvatarImage :src="user?.user_metadata?.avatar_url" alt="??"/>
                 <AvatarFallback>??</AvatarFallback>
               </Avatar>
               <div class="flex justify-center items-center gap-2">
@@ -341,11 +337,7 @@ const handleUserSoftDelete = async () => {
             </div>
           </CardContent>
           <CardFooter class="flex justify-center">
-            <button class="aspect-square items-center justify-center rounded-md border border-dashed">
-              <Upload :disabled="!isUpdating"
-                      class="w-12 text-muted-foreground"/>
-              <span class="sr-only">Upload</span>
-            </button>
+            <UploadInput @change="handleUserAvatarFileChange"/>
           </CardFooter>
         </Card>
         <Card v-if="$route.path != '/user/new'">
@@ -419,5 +411,4 @@ const handleUserSoftDelete = async () => {
 </template>
 
 <style scoped>
-
 </style>

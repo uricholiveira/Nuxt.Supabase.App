@@ -166,7 +166,7 @@ const handleUserDelete = async (id: string) => {
                     {{ user.role }}
                   </TableCell>
                   <TableCell class="hidden md:table-cell">
-                    2023-07-12 10:42 AM
+                    {{ new Date(user.created_at).toLocaleString("pt-BR", {}) }}
                   </TableCell>
                   <TableCell class="text-right">
                     <Button

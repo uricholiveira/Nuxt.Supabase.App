@@ -68,6 +68,30 @@ export const useUsersStore = defineStore("users", {
             }
 
             return {data, error}
+        },
+
+        async uploadAvatarFile(id: string, file: File) {
+            this.isLoading = true
+            const formData = new FormData()
+            formData.append('file', file, file.name)
+            for (const [key, value] of formData.entries()) {
+                console.log('1111')
+                console.log(key, value)
+            }
+
+            const {data, error} = await useFetch("/api/user", {
+                body: formData,
+                method: "POST",
+                params: {
+                    id: id
+                }
+            }).finally(() => this.isLoading = false)
+
+            if (error.value) {
+                console.log("error:", error)
+            }
+            //
+            // return await this.fetchUserById(id)
         }
     }
 })
